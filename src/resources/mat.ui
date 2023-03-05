@@ -98,6 +98,13 @@ p, li { white-space: pre-wrap; }
             </widget>
            </item>
            <item>
+            <widget class="QLabel" name="labelFilename">
+             <property name="text">
+              <string notr="true"/>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QFrame" name="frame">
              <layout class="QHBoxLayout" name="horizontalLayout_5">
               <item>
@@ -114,7 +121,7 @@ p, li { white-space: pre-wrap; }
                </spacer>
               </item>
               <item>
-               <widget class="QToolButton" name="toolButton_2">
+               <widget class="QToolButton" name="btnEditUndo">
                 <property name="enabled">
                  <bool>false</bool>
                 </property>
@@ -128,7 +135,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item>
-               <widget class="QToolButton" name="toolButton_3">
+               <widget class="QToolButton" name="btnEditRedo">
                 <property name="enabled">
                  <bool>false</bool>
                 </property>
@@ -142,7 +149,7 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item>
-               <widget class="QToolButton" name="toolButton">
+               <widget class="QToolButton" name="btnEditSave">
                 <property name="enabled">
                  <bool>false</bool>
                 </property>
@@ -725,7 +732,7 @@ p, li { white-space: pre-wrap; }
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>99</width>
+              <width>739</width>
               <height>204</height>
              </rect>
             </property>
@@ -760,8 +767,8 @@ p, li { white-space: pre-wrap; }
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>99</width>
-              <height>99</height>
+              <width>739</width>
+              <height>438</height>
              </rect>
             </property>
             <attribute name="icon">
@@ -1029,6 +1036,38 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>1256</x>
      <y>323</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>btnEditUndo</sender>
+   <signal>clicked()</signal>
+   <receiver>documentEditor</receiver>
+   <slot>undo()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>505</x>
+     <y>889</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>309</x>
+     <y>467</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>btnEditRedo</sender>
+   <signal>clicked()</signal>
+   <receiver>documentEditor</receiver>
+   <slot>redo()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>543</x>
+     <y>889</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>309</x>
+     <y>467</y>
     </hint>
    </hints>
   </connection>

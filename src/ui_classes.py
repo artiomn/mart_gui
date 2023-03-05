@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Optional, List, Union, Any
 
-from PyQt6 import uic, QtCore, QtGui
-from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QWidget, QFileDialog, QMessageBox, QMainWindow, QDialog, \
+from PyQt6 import uic, QtCore
+from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QWidget, QFileDialog, QMessageBox, QMainWindow, \
     QTableWidgetItem, QTextEdit
-from PyQt6.QtGui import QColor, QBrush, QTextCursor, QTextCharFormat, QPalette
+from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtCore import pyqtSlot, Qt
 
 from markdown_toolset.article_processor import OUT_FORMATS_LIST, IN_FORMATS_LIST
@@ -87,6 +87,12 @@ class MainUi(QMainWindow):
 
         self.actionAbout_Qt.triggered.connect(lambda: QMessageBox.aboutQt(self))
         self.actionAbout.triggered.connect(AboutBox)
+
+        self.documentEditor: QTextEdit
+        self.documentEditor.redoAvailable.connect(self._switch_ed_redo)
+        self.documentEditor.undoAvailable.connect(self._switch_ed_undo)
+        self.documentEditor.textChanged.connect(self._ed_text_changed)
+        self.btnEditSave.clicked.connect(self._btn_ed_save_click)
 
         self.show()
         self._log('Program started')
@@ -358,22 +364,33 @@ class MainUi(QMainWindow):
 
     @pyqtSlot(int, int)
     def _link_list_cell_activated(self, row: int, col: int):
-        if row >= 0:
-            links_table = self.downloadLinks
-            item: ItemParameters = links_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+        try:
+            self.documentEditor.blockSignals(True)
+            if row >= 0:
+                links_table = self.downloadLinks
+                item: ItemParameters = links_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
 
-            if item.downloaded:
-                self.documentEditor: QTextEdit
-                self.documentEditor.setEnabled(True)
-                self.documentEditor.setDocumentTitle(str(item.output_file_path))
-                with open(item.output_file_path, 'r') as f:
-                    self.documentEditor.setMarkdown(f.read())
+                if item.downloaded:
+                    self.documentEditor: QTextEdit
+                    self.documentEditor.setEnabled(True)
+                    self.btnEditSave.setEnabled(False)
+                    self.documentEditor.setDocumentTitle(str(item.output_file_path))
+                    self.labelFilename.setText(str(item.output_file_path))
+                    with open(item.output_file_path, 'r') as f:
+                        self.documentEditor.setMarkdown(f.read())
+                else:
+                    self.documentEditor.setEnabled(False)
+                    self.btnEditSave.setEnabled(False)
+                    self.btnEditUndo.setEnabled(False)
+                    self.btnEditRedo.setEnabled(False)
             else:
                 self.documentEditor.setEnabled(False)
-        else:
-            self.documentEditor.setEnabled(False)
-
-        self._update_controls()
+                self.btnEditSave.setEnabled(False)
+                self.btnEditUndo.setEnabled(False)
+                self.btnEditRedo.setEnabled(False)
+        finally:
+            self.documentEditor.blockSignals(False)
+            self._update_controls()
 
     @pyqtSlot(QTableWidgetItem)
     def _link_list_item_changed(self, item: QTableWidgetItem):
@@ -433,6 +450,25 @@ class MainUi(QMainWindow):
         self.actionLinks_List.setChecked(state)
         self.linksBox.setChecked(state)
         self.rightContainer.setVisible(state)
+
+    @pyqtSlot(bool)
+    def _switch_ed_undo(self, available: bool):
+        self.btnEditUndo.setEnabled(available and self.documentEditor.isEnabled())
+
+    @pyqtSlot(bool)
+    def _switch_ed_redo(self, available: bool):
+        self.btnEditRedo.setEnabled(available and self.documentEditor.isEnabled())
+
+    @pyqtSlot()
+    def _ed_text_changed(self):
+        self.btnEditSave.setEnabled(True)
+
+    @pyqtSlot()
+    def _btn_ed_save_click(self):
+        filename = self.labelFilename.text()
+        self._log(f'Saving file "{filename}"')
+        with open(filename, 'w', encoding='utf8') as f:
+            f.write(self.documentEditor.toMarkdown())
 
     @pyqtSlot()
     def _load_links_file(self):
