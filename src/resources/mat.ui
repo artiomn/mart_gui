@@ -79,8 +79,21 @@
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
             <widget class="QTextEdit" name="documentEditor">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="documentTitle">
-              <string>xzxz</string>
+              <string/>
+             </property>
+             <property name="markdown">
+              <string notr="true"/>
+             </property>
+             <property name="html">
+              <string notr="true">&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Noto Sans'; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
             </widget>
            </item>
@@ -344,6 +357,23 @@
                  <property name="icon">
                   <iconset resource="icons.qrc">
                    <normaloff>:/icons/icons/folder.svg</normaloff>:/icons/icons/folder.svg</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QToolButton" name="btnOpenMdFile">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="text">
+                  <string>...</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="icons.qrc">
+                   <normaloff>:/icons/icons/paperclip.svg</normaloff>:/icons/icons/paperclip.svg</iconset>
+                 </property>
+                 <property name="checkable">
+                  <bool>false</bool>
                  </property>
                 </widget>
                </item>
@@ -695,7 +725,7 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>739</width>
+              <width>99</width>
               <height>204</height>
              </rect>
             </property>
@@ -730,8 +760,8 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>739</width>
-              <height>438</height>
+              <width>99</width>
+              <height>99</height>
              </rect>
             </property>
             <attribute name="icon">
@@ -744,8 +774,14 @@
             <layout class="QGridLayout" name="gridLayout_2">
              <item row="0" column="0">
               <widget class="QListWidget" name="logList">
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
+               </property>
                <property name="editTriggers">
                 <set>QAbstractItemView::NoEditTriggers</set>
+               </property>
+               <property name="modelColumn">
+                <number>0</number>
                </property>
               </widget>
              </item>
@@ -789,6 +825,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="btnStart">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>Start</string>
              </property>
@@ -901,6 +940,9 @@
    <property name="text">
     <string>About</string>
    </property>
+   <property name="menuRole">
+    <enum>QAction::AboutRole</enum>
+   </property>
   </action>
   <action name="actionLoad_links">
    <property name="icon">
@@ -919,13 +961,28 @@
    <property name="text">
     <string>Exit</string>
    </property>
+   <property name="menuRole">
+    <enum>QAction::QuitRole</enum>
+   </property>
   </action>
   <action name="actionEnglish">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string notr="true">English</string>
    </property>
   </action>
   <action name="actionRussian">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Russian</string>
    </property>
@@ -933,6 +990,9 @@
   <action name="actionAbout_Qt">
    <property name="text">
     <string>About Qt</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::AboutQtRole</enum>
    </property>
   </action>
  </widget>

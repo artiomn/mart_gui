@@ -1,57 +1,33 @@
 from pathlib import Path
 from typing import Optional, List, Union, Any
 
-import logging
-
-from io import StringIO
-
 from PyQt6 import uic, QtCore, QtGui
 from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QWidget, QFileDialog, QMessageBox, QMainWindow, QDialog, \
-    QTableWidgetItem
+    QTableWidgetItem, QTextEdit
 from PyQt6.QtGui import QColor, QBrush, QTextCursor, QTextCharFormat, QPalette
-from PyQt6.QtCore import pyqtSlot, Qt, QObject
+from PyQt6.QtCore import pyqtSlot, Qt
 
 from markdown_toolset.article_processor import OUT_FORMATS_LIST, IN_FORMATS_LIST
 from markdown_toolset.www_tools import is_url
 from ordered_set import OrderedSet
 
+from .about_box import AboutBox
+from .error_message import ErrorMessage
+from .logic import AppLogic
 from .resources import res  # noqa
 from .item_parameters import ItemParameters
+from .log_config import streamer, logging
+
+
+_logger = logging.getLogger(__name__)
 
 
 # QtCore.QDir.addSearchPath('icons', (Path(__file__).parent / 'resources' / 'icons').as_posix())
 
-LOG_FORMAT = '| %(asctime)s | %(name)s-%(levelname)s:  %(message)s '
-FORMATTER = logging.Formatter(LOG_FORMAT)
-
-main_handler = logging.StreamHandler()
-main_handler.setLevel(logging.WARNING)
-main_handler.setFormatter(FORMATTER)
-
-streamer = StringIO()
-stream_handler = logging.StreamHandler(stream=streamer)
-stream_handler.setFormatter(FORMATTER)
-
-# Root Logger
-logging.basicConfig(level=logging.INFO, handlers=[main_handler, stream_handler])
-_logger = logging.getLogger(__name__)
-
-
-class ErrorMessage(QMessageBox):
-    def __init__(self, w: QWidget, e):
-        super().__init__()
-        self.setInformativeText(e)
-        self.critical(w, self.tr('Error'), e)
-
-
-class AboutBox(QDialog):
-    def __init__(self):
-        super(AboutBox, self).__init__()
-        uic.loadUi(Path(__file__).parent / 'resources' / 'about.ui', self)
-        self.exec()
-
-
 class MainUi(QMainWindow):
+    _failed_color = 'darkRed'
+    _success_color = 'darkGreen'
+
     def __init__(self):
         super(MainUi, self).__init__()
         uic.loadUi(Path(__file__).parent / 'resources' / 'mat.ui', self)
@@ -62,6 +38,7 @@ class MainUi(QMainWindow):
         self.btnClearLinks.clicked.connect(self._clear_links)
         self.btnAddLink.clicked.connect(self._add_link)
         self.btnDelLink.clicked.connect(self._del_link)
+        self.btnOpenMdFile.clicked.connect(self._open_md_file)
 
         self.btnStart.clicked.connect(self._start)
 
@@ -113,12 +90,22 @@ class MainUi(QMainWindow):
 
         self.show()
         self._log('Program started')
+        self._app_logic = AppLogic(self._on_complete, self._on_item_success, self._on_item_fail)
 
     def _log(self, strings: Union[str, List[str]]):
         if isinstance(strings, str):
-            self.logList.addItem(strings)
+            _logger.info('%s', strings)
+            streamer.seek(0)
+            self.logList.addItem(streamer.readline())
+            streamer.seek(0)
+            streamer.truncate()
         else:
-            self.logList.addItems(strings)
+            for s in strings:
+                _logger.info('%s', s)
+            streamer.seek(0)
+            self.logList.addItems(streamer.readlines())
+            streamer.seek(0)
+            streamer.truncate()
 
     def _enable_control_box(self):
         enabled = self.downloadLinks.selectionModel().hasSelection()
@@ -128,13 +115,16 @@ class MainUi(QMainWindow):
     def _set_link_list_buttons(self):
         select = self.downloadLinks.selectionModel()
         self.btnClearLinks.setEnabled(self.downloadLinks.rowCount() > 0)
+        #
+        self.btnStart.setEnabled(self.downloadLinks.rowCount() > 0)
         self.btnDelLink.setEnabled(select.hasSelection())
+        self.btnOpenMdFile.setEnabled(len(select.selection()) <= 1)
 
     def _get_links_data(self) -> List[ItemParameters]:
         links_table: QTableWidget = self.downloadLinks
 
         links = [ld for si in links_table.selectedItems()
-                 if (ld := getattr(si, 'linked_data', None)) is not None]
+                 if (ld := si.data(Qt.ItemDataRole.UserRole)) is not None]
 
         return links
 
@@ -176,7 +166,17 @@ class MainUi(QMainWindow):
     def _bool_to_tri_state(s: bool) -> int:
         return 2 if s else 0
 
-    def _item_parameters_to_ui(self, ips: List[ItemParameters]):
+    @staticmethod
+    def _set_default(p: ItemParameters, property_name: str, value):
+        if getattr(p, property_name) != value:
+            p.set_default(property_name)
+
+    def _item_parameters_to_ui(self, ips: List[ItemParameters]) -> None:
+        """
+        Translate item parameters to the UI, when string in the items table was selected.
+
+        :param ips: items list.
+        """
         p = ItemParameters()
         new_skip_set = OrderedSet()
         skip_set_common: bool = False
@@ -206,39 +206,17 @@ class MainUi(QMainWindow):
                 first_item = False
                 continue
 
-            if p.remove_source != self._bool_to_tri_state(i.remove_source):
-                p.remove_source = 1
-
-            if p.save_hierarchy != self._bool_to_tri_state(i.save_hierarchy):
-                p.save_hierarchy = 1
-
-            if p.download_incorrect_mime != self._bool_to_tri_state(i.download_incorrect_mime):
-                p.download_incorrect_mime = 1
-
-            if p.skip_all_incorrect != self._bool_to_tri_state(i.skip_all_incorrect):
-                p.skip_all_incorrect = 1
-
-            # skip_list = i.skip_list.sort()
-            if p.downloading_timeout != i.downloading_timeout:
-                p.downloading_timeout = -1
-
-            if p.output_format != i.output_format:
-                p.output_format = -1
-
-            if p.input_format != i.input_format:
-                p.input_format = -1
-
-            if p.deduplication_type != i.deduplication_type:
-                p.deduplication_type = -1
-
-            if p.output_path != i.output_path:
-                p.output_path = ''
-
-            if p.images_public_path != i.images_public_path:
-                p.images_public_path = ''
-
-            if p.images_dir_name != i.images_dir_name:
-                p.images_dir_name = ''
+            self._set_default(p, 'remove_source', self._bool_to_tri_state(i.remove_source))
+            self._set_default(p, 'save_hierarchy', self._bool_to_tri_state(i.save_hierarchy))
+            self._set_default(p, 'download_incorrect_mime', self._bool_to_tri_state(i.download_incorrect_mime))
+            self._set_default(p, 'skip_all_incorrect', self._bool_to_tri_state(i.skip_all_incorrect))
+            self._set_default(p, 'downloading_timeout', i.downloading_timeout)
+            self._set_default(p, 'output_format', i.output_format)
+            self._set_default(p, 'input_format', i.input_format)
+            self._set_default(p, 'deduplication_type', i.deduplication_type)
+            self._set_default(p, 'output_path', i.output_path)
+            self._set_default(p, 'images_public_path', i.images_public_path)
+            self._set_default(p, 'images_dir_name', i.images_dir_name)
 
             s_skip_list = sorted(i.skip_list)
             if list(new_skip_set) != s_skip_list:
@@ -287,7 +265,8 @@ class MainUi(QMainWindow):
             self._file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
 
     def _open_file_dialog(self, title: str, root: Optional[Path] = None,
-                          without_dir: bool = False, save_state: Optional[bytes] = None):
+                          without_dir: bool = False, save_state: Optional[bytes] = None,
+                          filters: Optional[List[str]] = None):
         dlg = self._file_dialog = QFileDialog()
         # Need to select directory.
         dlg.setOption(QFileDialog.Option.DontUseNativeDialog)
@@ -303,6 +282,8 @@ class MainUi(QMainWindow):
 
         dlg.setWindowTitle(title)
         dlg.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        if filters is not None:
+            dlg.setNameFilters(filters)
 
         if dlg.exec():
             if save_state is not None:
@@ -377,6 +358,21 @@ class MainUi(QMainWindow):
 
     @pyqtSlot(int, int)
     def _link_list_cell_activated(self, row: int, col: int):
+        if row >= 0:
+            links_table = self.downloadLinks
+            item: ItemParameters = links_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+
+            if item.downloaded:
+                self.documentEditor: QTextEdit
+                self.documentEditor.setEnabled(True)
+                self.documentEditor.setDocumentTitle(str(item.output_file_path))
+                with open(item.output_file_path, 'r') as f:
+                    self.documentEditor.setMarkdown(f.read())
+            else:
+                self.documentEditor.setEnabled(False)
+        else:
+            self.documentEditor.setEnabled(False)
+
         self._update_controls()
 
     @pyqtSlot(QTableWidgetItem)
@@ -443,6 +439,25 @@ class MainUi(QMainWindow):
         if res_path := self._open_file_dialog(self.tr('Open file with links to download'), without_dir=True):
             self._load_links(res_path)
 
+    @staticmethod
+    def _hl_item(item: QTableWidgetItem, color: str):
+        item.setForeground(QBrush(QColor(color)))
+
+    def _hl_row(self, row_num: int, color: str):
+        links_table: QTableWidget = self.downloadLinks
+        try:
+            links_table.blockSignals(True)
+            self._hl_item(links_table.item(row_num, 0), color)
+        finally:
+            links_table.blockSignals(False)
+            links_table.repaint()
+
+    def _hl_failed_row(self, row_num):
+        self._hl_row(row_num, self._failed_color)
+
+    def _hl_successful_row(self, row_num: int):
+        self._hl_row(row_num, self._success_color)
+
     def _load_links(self, res_path: Union[Path, str]):
         links_table: QTableWidget = self.downloadLinks
 
@@ -477,11 +492,10 @@ class MainUi(QMainWindow):
                     item = QTableWidgetItem(line)
                     try:
                         if not is_url(line) and not Path(line).is_file():
-                            item.setForeground(QBrush(QColor('darkRed')))
+                            self._hl_item(item, self._failed_color)
                         self._add_download_link(prev_row_count + nl, item)
                     except Exception as e:
-                        # TODO: logging.
-                        print(str(e))
+                        _logger.error('%s', e)
                         err_log.append(str(e))
 
                 if err_log:
@@ -523,16 +537,52 @@ class MainUi(QMainWindow):
             table.blockSignals(False)
             self._update_controls()
 
+    @pyqtSlot()
+    def _open_md_file(self):
+        filename = self._open_file_dialog(self.tr('Open Markdown article file'), without_dir=True,
+                                          filters=[self.tr('Markdown files (*.md)'),
+                                                   self.tr('All files (*)')])
+
+        if filename is None:
+            return
+
+        links_table = self.downloadLinks
+
+        try:
+            links_table.blockSignals(True)
+            if 0 == links_table.rowCount():
+                links_table.setRowCount(1)
+                self._add_download_link(0, QTableWidgetItem(filename))
+            else:
+                indexes = links_table.selectionModel().selectedRows()
+
+                assert len(indexes) == 1, 'Incorrect selection'
+                self._add_download_link(indexes[0].row(), QTableWidgetItem(filename))
+
+        finally:
+            links_table.blockSignals(False)
+            self._update_controls()
+
     def _get_download_links(self, row_numbers: List[int]) -> List[QTableWidgetItem]:
         links_table: QTableWidget = self.downloadLinks
         return [links_table.item(rn, 0) for rn in row_numbers]
+
+    def _get_row_by_text(self, text: str) -> int:
+        links_table: QTableWidget = self.downloadLinks
+
+        result = links_table.findItems(text, Qt.MatchFlag.MatchExactly)
+
+        if 0 == len(result):
+            raise ValueError(f'Cant\'t find text "{text}"')
+
+        return result[0].row()
 
     def _add_download_link(self, row_number: int, item: Optional[QTableWidgetItem] = None):
         links_table: QTableWidget = self.downloadLinks
         if item is None:
             item = QTableWidgetItem()
 
-        item.linked_data = ItemParameters()
+        item.setData(Qt.ItemDataRole.UserRole, ItemParameters())
         links_table.setItem(row_number, 0, item)
 
         if not links_table.selectionModel().selectedRows():
@@ -540,8 +590,34 @@ class MainUi(QMainWindow):
 
     @pyqtSlot()
     def _start(self):
-        pass
+        if self._app_logic.running:
+            self._log('User stopped work...')
+            self._app_logic.stop()
+            self.btnStart.setText(self.tr('Start'))
+        else:
+            self._log('Work started...')
+            self.btnStart.setText(self.tr('Stop'))
+            links_table = self.downloadLinks
+
+            download_files = [(item.text(), item.row(), item.data(Qt.ItemDataRole.UserRole)) for i
+                              in range(links_table.rowCount()) if (item := links_table.item(i, 0))]
+            self._app_logic.add_items(download_files)
+
+    def _on_complete(self):
+        self._log('Work completed...')
+        self.btnStart.setText(self.tr('Start'))
+
+    def _on_item_success(self, index, file_path):
+        self._hl_successful_row(index)
+        links_table = self.downloadLinks
+        item: ItemParameters = links_table.item(index, 0).data(Qt.ItemDataRole.UserRole)
+        item.downloaded = True
+        item.output_file_path = file_path
+
+    def _on_item_fail(self, index, file_path):
+        self._hl_failed_row(index)
 
     @pyqtSlot()
     def _exit_app(self):
+        _logger.debug('Exiting')
         self.close()
