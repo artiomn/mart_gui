@@ -3,4 +3,4 @@
 Markdown Articles Tool Qt GUI.
 
 Not finished: under development now.
-Doesn't work yet.
+But it works.
