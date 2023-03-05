@@ -3,7 +3,7 @@ from typing import Optional, List, Union, Any
 
 from PyQt6 import uic, QtCore
 from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QWidget, QFileDialog, QMessageBox, QMainWindow, \
-    QTableWidgetItem, QTextEdit
+    QTableWidgetItem, QTextEdit, QPushButton
 from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtCore import pyqtSlot, Qt
 
@@ -13,7 +13,7 @@ from ordered_set import OrderedSet
 
 from .about_box import AboutBox
 from .error_message import ErrorMessage
-from .logic import AppLogic
+from .app_logic import AppLogic
 from .resources import res  # noqa
 from .item_parameters import ItemParameters
 from .log_config import streamer, logging
@@ -31,6 +31,17 @@ class MainUi(QMainWindow):
     def __init__(self):
         super(MainUi, self).__init__()
         uic.loadUi(Path(__file__).parent / 'resources' / 'mat.ui', self)
+
+        self.btnStart: QPushButton
+        self.btnExit: QPushButton
+        self.btnLoadLinks: QPushButton
+        self.btnClearLinks: QPushButton
+        self.btnAddLink: QPushButton
+        self.btnDelLink: QPushButton
+        self.btnOpenMdFile: QPushButton
+        self.btnSelectOutPath: QPushButton
+        self.btnSelectPubPath: QPushButton
+        self.documentEditor: QTextEdit
 
         self.btnExit.clicked.connect(self._exit_app)
 
@@ -88,7 +99,6 @@ class MainUi(QMainWindow):
         self.actionAbout_Qt.triggered.connect(lambda: QMessageBox.aboutQt(self))
         self.actionAbout.triggered.connect(AboutBox)
 
-        self.documentEditor: QTextEdit
         self.documentEditor.redoAvailable.connect(self._switch_ed_redo)
         self.documentEditor.undoAvailable.connect(self._switch_ed_undo)
         self.documentEditor.textChanged.connect(self._ed_text_changed)

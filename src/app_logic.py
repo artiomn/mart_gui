@@ -1,7 +1,5 @@
-import concurrent
 import logging
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, Future
-import time
+from concurrent.futures import ThreadPoolExecutor, Future
 from os import cpu_count
 from typing import List, Tuple, Callable, Optional
 
