@@ -21,7 +21,6 @@ from .log_config import streamer, logging
 
 _logger = logging.getLogger(__name__)
 
-
 # QtCore.QDir.addSearchPath('icons', (Path(__file__).parent / 'resources' / 'icons').as_posix())
 
 class MainUi(QMainWindow):

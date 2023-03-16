@@ -1,6 +1,6 @@
-# mat_gui
+# MARKdown Tool GUI
 
-Markdown Articles Tool Qt GUI.
+Basic markdown Articles Tool Qt GUI.
 
 Not finished: under development now.
 But it works.
