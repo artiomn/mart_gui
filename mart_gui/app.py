@@ -1,7 +1,6 @@
-#!/bin/env python3
 import sys
 from PyQt6.QtWidgets import QApplication
-from src.main_window import MainUi
+from .main_window import MainUi
 
 
 def create_qt_ui(args):
@@ -10,4 +9,6 @@ def create_qt_ui(args):
     app.exec()
 
 
-create_qt_ui(sys.argv)
+def main():
+    create_qt_ui(sys.argv)
+

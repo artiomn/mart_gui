@@ -1,0 +1,3 @@
+include ./requirements.txt
+include ./mart_gui/resources/*.ui
+include ./mart_gui/resources/*.qrc
